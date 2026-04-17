@@ -1,0 +1,9 @@
+{
+  "buildCommand": "echo 'No build required - static HTML'",
+  "outputDirectory": ".",
+  "installCommand": "echo 'No install required'",
+  "devCommand": "npx serve .",
+  "framework": "static",
+  "cleanUrls": true,
+  "trailingSlash": false
+}
