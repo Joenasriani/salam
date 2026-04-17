@@ -1,0 +1,53 @@
+```
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
+
+# Build and distribution artifacts
+build/
+dist/
+*.egg
+*.egg-info/
+.eggs/
+.installed.cfg
+*.so
+
+# Testing
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
+
+# Environment variables
+.env
+.env.local
+*.env.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Documentation
+docs/_build/
+```
