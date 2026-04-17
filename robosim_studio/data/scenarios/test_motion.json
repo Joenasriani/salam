@@ -1,0 +1,89 @@
+{
+  "metadata": {
+    "name": "Test Motion",
+    "version": "1.0.0",
+    "author": "User",
+    "description": "Simple motion to [0.5, 0.3, 0.2]",
+    "tags": [],
+    "license": "MIT",
+    "created_at": null,
+    "updated_at": null,
+    "dependencies": []
+  },
+  "robot": {
+    "urdf_path": null,
+    "dh_parameters": null,
+    "required_dof": 4,
+    "required_sensors": [],
+    "end_effector_type": null
+  },
+  "environment": {
+    "gravity": [
+      0.0,
+      0.0,
+      -9.81
+    ],
+    "assets": [],
+    "lighting": {},
+    "collision_enabled": true
+  },
+  "task_graph": {
+    "nodes": [
+      {
+        "id": "init",
+        "name": "Initialize",
+        "type": "trigger",
+        "description": null,
+        "config": {
+          "params": {}
+        },
+        "trigger": "immediate",
+        "trigger_params": {},
+        "metadata": {}
+      },
+      {
+        "id": "move_to_target",
+        "name": "Move to Target",
+        "type": "motion_plan",
+        "description": null,
+        "config": {
+          "params": {
+            "target_position": [
+              0.5,
+              0.3,
+              0.2
+            ],
+            "max_velocity": 0.5
+          }
+        },
+        "trigger": "immediate",
+        "trigger_params": {},
+        "metadata": {}
+      }
+    ],
+    "edges": [
+      {
+        "source": "init",
+        "target": "move_to_target",
+        "condition": {
+          "type": "always",
+          "expression": null,
+          "timeout": null
+        },
+        "label": null
+      }
+    ]
+  },
+  "validation_rules": [],
+  "telemetry": {
+    "enabled": true,
+    "sample_rate": 60.0,
+    "metrics": [
+      "position",
+      "velocity",
+      "torque",
+      "collision"
+    ],
+    "output_format": "json"
+  }
+}
