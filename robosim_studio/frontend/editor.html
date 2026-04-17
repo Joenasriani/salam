@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoboNet Behavior Editor</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reactflow@11/dist/index.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reactflow@11/dist/style.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: #0d1117; }
+        .app-container { display: flex; height: 100vh; }
+        .sidebar { width: 250px; background: #1a1a2e; color: white; padding: 15px; overflow-y: auto; border-right: 1px solid #0f3460; }
+        .sidebar h2 { margin-bottom: 15px; font-size: 15px; color: #e94560; }
+        .node-type { background: #16213e; padding: 10px; margin-bottom: 8px; border-radius: 5px; cursor: grab; border: 1px solid #0f3460; display: flex; align-items: center; }
+        .node-type:hover { background: #0f3460; }
+        .node-type .icon { margin-right: 8px; }
+        .main-content { flex: 1; display: flex; flex-direction: column; }
+        .toolbar { background: #16213e; padding: 10px 15px; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid #0f3460; }
+        .btn { padding: 7px 14px; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; font-size: 12px; }
+        .btn-primary { background: #e94560; color: white; }
+        .btn-secondary { background: #0f3460; color: white; }
+        .btn-success { background: #4ade80; color: #064e3b; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .editor-container { flex: 1; background: #0d1117; }
+        .properties-panel { width: 280px; background: #1a1a2e; color: white; padding: 15px; overflow-y: auto; border-left: 1px solid #0f3460; }
+        .properties-panel h3 { margin-bottom: 12px; font-size: 13px; color: #e94560; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; margin-bottom: 4px; font-size: 11px; color: #94a3b8; text-transform: uppercase; }
+        .form-group input { width: 100%; padding: 7px; border: 1px solid #0f3460; border-radius: 4px; background: #16213e; color: white; font-size: 12px; }
+        .status-bar { background: #0f3460; color: #94a3b8; padding: 5px 15px; font-size: 11px; display: flex; justify-content: space-between; }
+        .status-indicator { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; }
+        .status-connected { background: #4ade80; }
+        .status-disconnected { background: #ef4444; }
+        .log-panel { height: 120px; background: #0d1117; border-top: 1px solid #0f3460; padding: 10px; overflow-y: auto; font-family: monospace; font-size: 11px; }
+        .log-entry { margin-bottom: 3px; }
+        .log-info { color: #60a5fa; }
+        .log-success { color: #4ade80; }
+        .log-error { color: #ef4444; }
+        .custom-node { background: #16213e; border: 2px solid #0f3460; border-radius: 6px; padding: 8px; min-width: 140px; }
+        .custom-node.selected { border-color: #e94560; }
+        .node-header { font-weight: 600; margin-bottom: 3px; color: white; font-size: 12px; }
+        .node-type-label { font-size: 9px; color: #94a3b8; text-transform: uppercase; }
+        .node-trigger { border-left: 3px solid #8b5cf6; }
+        .node-motion_plan { border-left: 3px solid #3b82f6; }
+        .node-manipulation { border-left: 3px solid #10b981; }
+        .node-wait { border-left: 3px solid #ec4899; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
+        const ReactFlow = window.ReactFlow;
+        
+        const NODE_TYPES = {
+            trigger: { label: 'Trigger', icon: '⚡' },
+            motion_plan: { label: 'Motion Plan', icon: '🎯' },
+            manipulation: { label: 'Manipulation', icon: '🤖' },
+            condition: { label: 'Condition', icon: '❓' },
+            wait: { label: 'Wait', icon: '⏱️' },
+            action: { label: 'Action', icon: '🔧' }
+        };
+        
+        const CustomNode = ({ data, selected }) => (
+            <div className={`custom-node node-${data.type} ${selected ? 'selected' : ''}`}>
+                <div className="node-header">{NODE_TYPES[data.type]?.icon} {data.label}</div>
+                <div className="node-type-label">{data.type}</div>
+            </div>
+        );
+        
+        const App = () => {
+            const [nodes, setNodes] = useState([]);
+            const [edges, setEdges] = useState([]);
+            const [selectedNode, setSelectedNode] = useState(null);
+            const [scenarioName, setScenarioName] = useState('My Scenario');
+            const [wsConnected, setWsConnected] = useState(false);
+            const [isRunning, setIsRunning] = useState(false);
+            const [logs, setLogs] = useState([]);
+            const [ws, setWs] = useState(null);
+            
+            useEffect(() => {
+                try {
+                    const websocket = new WebSocket('ws://localhost:8765');
+                    websocket.onopen = () => { setWsConnected(true); addLog('Connected to server', 'success'); };
+                    websocket.onclose = () => { setWsConnected(false); addLog('Disconnected', 'warning'); };
+                    websocket.onmessage = (e) => handleServerMessage(JSON.parse(e.data));
+                    websocket.onerror = () => addLog('WebSocket error', 'error');
+                    setWs(websocket);
+                    return () => websocket.close();
+                } catch (err) { addLog(`Connection failed: ${err.message}`, 'error'); }
+            }, []);
+            
+            const addLog = (message, type = 'info') => {
+                setLogs(prev => [...prev.slice(-30), { time: new Date().toLocaleTimeString(), message, type }]);
+            };
+            
+            const sendMsg = (msg) => { if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg)); else addLog('Not connected', 'error'); };
+            
+            const handleServerMessage = (data) => {
+                switch(data.type) {
+                    case 'connected': addLog(data.message, 'info'); break;
+                    case 'validation_result': addLog(data.valid ? `✓ Valid: ${data.nodes} nodes` : `✗ ${data.error}`, data.valid ? 'success' : 'error'); break;
+                    case 'scenario_loaded': addLog(`Loaded: ${data.name}`, 'success'); break;
+                    case 'execution_started': setIsRunning(true); addLog('▶ Running', 'info'); break;
+                    case 'execution_complete': setIsRunning(false); addLog(`✓ Done: ${data.completed_nodes.length} nodes`, 'success'); break;
+                    case 'execution_stopped': setIsRunning(false); addLog('⏹ Stopped', 'warning'); break;
+                    case 'telemetry': setNodes(nds => nds.map(n => n.id === data.current_node ? {...n, data: {...n.data, status: data.node_status}} : n)); break;
+                    case 'error': addLog(`✗ ${data.message}`, 'error'); break;
+                }
+            };
+            
+            const onDrop = useCallback((e) => {
+                e.preventDefault();
+                const type = e.dataTransfer.getData('application/reactflow');
+                if (!type) return;
+                const rect = e.target.getBoundingClientRect();
+                setNodes(nds => [...nds, {
+                    id: `${type}_${Date.now()}`, type: 'custom',
+                    position: { x: e.clientX - rect.left, y: e.clientY - rect.top },
+                    data: { label: NODE_TYPES[type].label, type, config: {} }
+                }]);
+            }, []);
+            
+            const exportJson = () => JSON.stringify({
+                metadata: { name: scenarioName, version: '1.0.0', author: 'User', description: 'RoboNet', tags: [], license: 'MIT' },
+                robot: { required_dof: 4, required_sensors: [] },
+                environment: { gravity: [0,0,-9.81], assets: [], collision_enabled: true },
+                task_graph: {
+                    nodes: nodes.map(n => ({ id: n.id, name: n.data.label, type: n.data.type, config: { params: n.data.config||{} }, trigger: 'immediate', trigger_params: {}, metadata: {} })),
+                    edges: edges.map(e => ({ source: e.source, target: e.target, condition: { type: 'always' } }))
+                },
+                validation_rules: [],
+                telemetry: { enabled: true, sample_rate: 60, metrics: ['position','velocity'], output_format: 'json' }
+            }, null, 2);
+            
+            const handleExport = () => {
+                const blob = new Blob([exportJson()], {type:'application/json'});
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+                a.download = scenarioName.replace(/\s+/g,'_').toLowerCase()+'.json'; a.click();
+                addLog('Exported', 'success');
+            };
+            
+            const updateNode = (field, value) => {
+                if (!selectedNode) return;
+                setNodes(nds => nds.map(n => n.id === selectedNode.id ? {...n, data: {...n.data, [field]: value}} : n));
+                setSelectedNode(n => n ? {...n, data: {...n.data, [field]: value}} : null);
+            };
+            
+            return (
+                <div className="app-container">
+                    <div className="sidebar">
+                        <h2>📦 Node Types</h2>
+                        {Object.entries(NODE_TYPES).map(([t,c]) => (
+                            <div key={t} className="node-type" draggable onDragStart={e=>{e.dataTransfer.setData('application/reactflow',t);}}>
+                                <span className="icon">{c.icon}</span>{c.label}
+                            </div>
+                        ))}
+                        <div style={{marginTop:'20px'}}><h2>ℹ️ Help</h2>
+                            <p style={{fontSize:'11px',color:'#94a3b8',lineHeight:'1.5'}}>1.Drag nodes<br/>2.Drop in editor<br/>3.Connect handles<br/>4.Configure<br/>5.Run</p>
+                        </div>
+                    </div>
+                    <div className="main-content">
+                        <div className="toolbar">
+                            <input type="text" value={scenarioName} onChange={e=>setScenarioName(e.target.value)} placeholder="Name" style={{padding:'6px',borderRadius:'4px',border:'1px solid #0f3460',background:'#16213e',color:'white',width:'150px'}}/>
+                            <button className="btn btn-secondary" onClick={()=>sendMsg({type:'validate_scenario',scenario:exportJson()})}>✓ Validate</button>
+                            <button className="btn btn-secondary" onClick={()=>sendMsg({type:'load_scenario',scenario:exportJson()})}>📥 Load</button>
+                            <button className="btn btn-success" onClick={()=>sendMsg({type:'start_execution'})} disabled={isRunning}>▶ Run</button>
+                            <button className="btn btn-secondary" onClick={()=>sendMsg({type:'stop_execution'})} disabled={!isRunning}>⏹ Stop</button>
+                            <button className="btn btn-primary" onClick={handleExport}>💾 Export</button>
+                            <div style={{marginLeft:'auto',fontSize:'11px',display:'flex',alignItems:'center'}}>
+                                <span className={`status-indicator status-${wsConnected?'connected':'disconnected'}`}></span>
+                                {wsConnected?'Connected':'Disconnected'}
+                                {isRunning && <><span className="status-indicator" style={{marginLeft:'8px',background:'#fbbf24',animation:'pulse 1s infinite'}}></span> Running</>}
+                            </div>
+                        </div>
+                        <div className="editor-container">
+                            <ReactFlow nodes={nodes} edges={edges} onConnect={c=>setEdges(es=>[...es,{...c,type:'smoothstep',animated:true,style:{stroke:'#e94560',strokeWidth:2}}])}
+                                onNodeClick={(e,n)=>setSelectedNode(n)} onDrop={onDrop} onDragOver={e=>e.preventDefault()}
+                                nodeTypes={{custom:CustomNode}} fitView snapToGrid snapGrid={[15,15]} />
+                        </div>
+                        <div className="log-panel">{logs.map((l,i)=><div key={i} className={`log-entry log-${l.type}`}>[{l.time}] {l.message}</div>)}</div>
+                        <div className="status-bar"><span>Nodes: {nodes.length} | Edges: {edges.length}</span><span>RoboNet v1.0</span></div>
+                    </div>
+                    <div className="properties-panel">
+                        <h3>⚙️ Properties</h3>
+                        {selectedNode ? (<>
+                            <div className="form-group"><label>Name</label><input value={selectedNode.data.label} onChange={e=>updateNode('label',e.target.value)}/></div>
+                            <div className="form-group"><label>Type</label><input value={selectedNode.data.type} disabled/></div>
+                            <div className="form-group"><label>ID</label><input value={selectedNode.id} disabled/></div>
+                            <hr style={{borderColor:'#0f3460',margin:'12px 0'}}/>
+                            <div className="form-group"><label>Target [x,y,z]</label><input placeholder="[0.5,0.3,0.2]" onChange={e=>{try{updateNode('config',{...selectedNode.data.config,target_position:JSON.parse(e.target.value)})}catch{}}}/></div>
+                            <div className="form-group"><label>Max Velocity</label><input type="number" step="0.1" placeholder="0.5" onChange={e=>updateNode('config',{...selectedNode.data.config,max_velocity:parseFloat(e.target.value)})}/></div>
+                            <div className="form-group"><label>Duration</label><input type="number" step="0.1" placeholder="1.0" onChange={e=>updateNode('config',{...selectedNode.data.config,duration:parseFloat(e.target.value)})}/></div>
+                        </>) : <p style={{color:'#94a3b8',fontSize:'12px'}}>Select a node</p>}
+                    </div>
+                </div>
+            );
+        };
+        ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+    </script>
+</body>
+</html>

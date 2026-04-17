@@ -8,6 +8,8 @@ __pycache__/
 env/
 venv/
 .venv/
+.ENV
+.venv.bak/
 pip-log.txt
 pip-delete-this-directory.txt
 .tox/
@@ -20,24 +22,21 @@ coverage.xml
 *.log
 *.tmp
 *.swp
+*.swo
 .DS_Store
 Thumbs.db
 
 # Build and distribution artifacts
-build/
 dist/
-*.egg
+build/
 *.egg-info/
-.eggs/
-.installed.cfg
-*.so
 
 # Testing
 .pytest_cache/
 .mypy_cache/
-.hypothesis/
+.coverage/
 
-# Environment variables
+# Environment files
 .env
 .env.local
 *.env.*
@@ -45,9 +44,28 @@ dist/
 # IDE
 .vscode/
 .idea/
-*.swp
-*.swo
 
-# Documentation
-docs/_build/
+# Compressed files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
 ```
