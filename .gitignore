@@ -1,4 +1,25 @@
 ```
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# Build artifacts
+dist/
+build/
+target/
+
 # Python
 __pycache__/
 *.pyc
@@ -8,42 +29,26 @@ __pycache__/
 env/
 venv/
 .venv/
-.ENV
 .venv.bak/
 pip-log.txt
-pip-delete-this-directory.txt
-.tox/
+pip-selfcheck.json
+
+# Coverage reports
 .coverage
+htmlcov/
 .coverage.*
 .cache
 nosetests.xml
 coverage.xml
 *.cover
-*.log
-*.tmp
-*.swp
-*.swo
-.DS_Store
-Thumbs.db
 
-# Build and distribution artifacts
-dist/
-build/
-*.egg-info/
-
-# Testing
-.pytest_cache/
+# MyPy
 .mypy_cache/
-.coverage/
+.dmypy.json
+dmypy.json
 
-# Environment files
-.env
-.env.local
-*.env.*
-
-# IDE
-.vscode/
-.idea/
+# PyTest
+.pytest_cache/
 
 # Compressed files
 *.zip
